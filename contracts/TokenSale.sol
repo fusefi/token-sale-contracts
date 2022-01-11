@@ -12,6 +12,8 @@ contract TokenSale is Ownable, ITokenSale {
     using SafeMath for uint256;
     using SafeMath for uint16;
 
+    uint256 private constant SECONDS_IN_MONTH = 2592000;
+
     IVestingVault public vestingVault;
 
     ERC20 public token;
@@ -20,9 +22,9 @@ contract TokenSale is Ownable, ITokenSale {
 
     uint256 public saleDuration;
 
-    uint16 public vestingCliff;
+    uint16 public firstVestingDuration;
 
-    uint16 public vestingDuration;
+    uint16 public secondVestingDuration;
 
     uint256 public tokenPerFuse;
 
@@ -30,43 +32,67 @@ contract TokenSale is Ownable, ITokenSale {
 
     uint256 public availableTokensForSale;
 
-    uint16 public unlockedPercentAtPurchase;
+    uint16 public unlockPercent;
 
-    event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 fuseAmount, uint256 tokenAmount);
+    event TokenPurchase(
+        address indexed purchaser,
+        address indexed beneficiary,
+        uint256 fuseAmount,
+        uint256 tokenAmount
+    );
 
     constructor(
-        IVestingVault _vestingVault, 
-        ERC20 _token, 
-        uint256 _startTime, 
+        IVestingVault _vestingVault,
+        ERC20 _token,
+        uint256 _startTime,
         uint256 _saleDuration,
-        uint16 _firstVestingCliff,
         uint16 _firstVestingDuration,
-        uint16 _secondVestingCliff,
         uint16 _secondVestingDuration,
         uint256 _tokenPerFuse,
         uint256 _tokensForSale,
-        uint16 _unlockedPercentAtPurchase
+        uint16 _unlockPercent
     ) {
-        require(_unlockedPercentAtPurchase > 0 && _unlockedPercentAtPurchase <= 100, "percent should be greater than 0 and less than 100");
+        require(
+            address(_vestingVault) != address(0),
+            "vault address should not be zero address"
+        );
+        require(
+            address(_token) != address(0),
+            "token address should not be zero address"
+        );
+        require(_tokenPerFuse > 0, "rate should be greater than zero");
+        require(
+            _tokensForSale > 0,
+            "tokens for sale should be greater than zero"
+        );
+        require(
+            _unlockPercent > 0 && _unlockPercent <= 100,
+            "percent should be greater than zero and less than 100"
+        );
 
         vestingVault = _vestingVault;
         token = _token;
         startTime = _startTime;
         saleDuration = _saleDuration;
-        vestingCliff = _vestingCliff;
-        vestingDuration = _vestingDuration;
+        firstVestingDuration = _firstVestingDuration;
+        secondVestingDuration = _secondVestingDuration;
         tokenPerFuse = _tokenPerFuse;
         totalTokensForSale = _tokensForSale;
         availableTokensForSale = _tokensForSale;
-        unlockedPercentAtPurchase = _unlockedPercentAtPurchase;
-    }
-
-    function calculateTokenAmount(uint256 fuseAmount) public override view returns (uint256) {
-        return fuseAmount.mul(tokenPerFuse);
+        unlockPercent = _unlockPercent;
     }
 
     receive() external payable {
         _purchase(msg.sender);
+    }
+
+    function calculateTokenAmount(uint256 fuseAmount)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return fuseAmount.mul(tokenPerFuse);
     }
 
     function purchaseTokens(address beneficiary) public override {
@@ -74,7 +100,10 @@ contract TokenSale is Ownable, ITokenSale {
     }
 
     function withdrawTokens() public override onlyOwner {
-        require(token.transfer(owner(), token.balanceOf(address(this))), "Failed to send tokens");
+        require(
+            token.transfer(owner(), token.balanceOf(address(this))),
+            "Failed to send tokens"
+        );
     }
 
     function withdrawFuse() public override onlyOwner {
@@ -89,21 +118,48 @@ contract TokenSale is Ownable, ITokenSale {
         uint256 tokenAmount = calculateTokenAmount(msg.value);
         require(tokenAmount > 0, "token amount should be greater than zero");
 
-        uint256 unlockedAmount = tokenAmount.mul(unlockedPercentAtPurchase).div(100);
-        require(unlockedAmount > 0, "unlocked amount should be greater than zero");
+        if (firstVestingDuration > 0 && secondVestingDuration > 0) {
+            uint256 unlockedAmount = tokenAmount.mul(unlockPercent).div(100);
+            require(
+                unlockedAmount > 0,
+                "unlocked amount should be greater than zero"
+            );
 
-        uint256 lockedAmount = tokenAmount.sub(unlockedAmount);
+            uint256 lockedAmount = tokenAmount.sub(unlockedAmount);
 
-        // create two vestings for user,    
-        _createVesting(beneficiary, unlockedAmount, 0);
-        _createVesting(beneficiary, lockedAmount, 2592000);
+            _createVestingSchedule(
+                beneficiary,
+                unlockedAmount,
+                0,
+                firstVestingDuration
+            );
+            _createVestingSchedule(
+                beneficiary,
+                lockedAmount,
+                SECONDS_IN_MONTH,
+                secondVestingDuration
+            );
+        } else {
+            require(token.transfer(beneficiary, tokenAmount), "no tokens");
+        }
 
         availableTokensForSale = availableTokensForSale.sub(tokenAmount);
 
         emit TokenPurchase(msg.sender, beneficiary, msg.value, tokenAmount);
     }
 
-    function _createVesting(address beneficiary, uint256 amount, uint256 vestingStartTime) private {
-        vestingVault.addTokenGrant(beneficiary, vestingStartTime, amount, vestingDuration, 0);
+    function _createVestingSchedule(
+        address beneficiary,
+        uint256 amount,
+        uint256 vestingStartTime,
+        uint16 vestingDuration
+    ) private {
+        vestingVault.addTokenGrant(
+            beneficiary,
+            vestingStartTime,
+            amount,
+            vestingDuration,
+            0
+        );
     }
 }
