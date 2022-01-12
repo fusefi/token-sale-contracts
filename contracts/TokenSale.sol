@@ -12,7 +12,7 @@ contract TokenSale is Ownable, ITokenSale {
     using SafeMath for uint256;
     using SafeMath for uint16;
 
-    uint256 private constant SECONDS_IN_MONTH = 2592000;
+    uint256 private constant SECONDS_IN_DAY = 86400;
 
     IVestingVault public vestingVault;
 
@@ -22,11 +22,11 @@ contract TokenSale is Ownable, ITokenSale {
 
     uint256 public saleDuration;
 
-    uint16 public firstVestingDuration;
+    uint16 public firstVestingDurationInDays;
 
-    uint16 public secondVestingDuration;
+    uint16 public secondVestingDurationInDays;
 
-    uint256 public tokenPerFuse;
+    uint256 public tokenPerWei;
 
     uint256 public totalTokensForSale;
 
@@ -41,14 +41,19 @@ contract TokenSale is Ownable, ITokenSale {
         uint256 tokenAmount
     );
 
+    modifier saleEnded {
+        require(block.timestamp > startTime + saleDuration, "sale is open");
+        _;
+    }
+
     constructor(
         IVestingVault _vestingVault,
         ERC20 _token,
         uint256 _startTime,
         uint256 _saleDuration,
-        uint16 _firstVestingDuration,
-        uint16 _secondVestingDuration,
-        uint256 _tokenPerFuse,
+        uint16 _firstVestingDurationInDays,
+        uint16 _secondVestingDurationInDays,
+        uint256 _tokenPerWei,
         uint256 _tokensForSale,
         uint16 _unlockPercent
     ) {
@@ -60,7 +65,11 @@ contract TokenSale is Ownable, ITokenSale {
             address(_token) != address(0),
             "token address should not be zero address"
         );
-        require(_tokenPerFuse > 0, "rate should be greater than zero");
+        require(
+            _startTime > block.timestamp,
+            "startTime should be a time in the future"
+        );
+        require(_tokenPerWei > 0, "rate should be greater than zero");
         require(
             _tokensForSale > 0,
             "tokens for sale should be greater than zero"
@@ -74,9 +83,9 @@ contract TokenSale is Ownable, ITokenSale {
         token = _token;
         startTime = _startTime;
         saleDuration = _saleDuration;
-        firstVestingDuration = _firstVestingDuration;
-        secondVestingDuration = _secondVestingDuration;
-        tokenPerFuse = _tokenPerFuse;
+        firstVestingDurationInDays = _firstVestingDurationInDays;
+        secondVestingDurationInDays = _secondVestingDurationInDays;
+        tokenPerWei = _tokenPerWei;
         totalTokensForSale = _tokensForSale;
         availableTokensForSale = _tokensForSale;
         unlockPercent = _unlockPercent;
@@ -92,33 +101,37 @@ contract TokenSale is Ownable, ITokenSale {
         override
         returns (uint256)
     {
-        return fuseAmount.mul(tokenPerFuse);
+        return fuseAmount.mul(tokenPerWei);
     }
 
-    function purchaseTokens(address beneficiary) public override {
+    function purchaseTokens(address beneficiary) public payable override {
         _purchase(beneficiary);
     }
 
-    function withdrawTokens() public override onlyOwner {
+    function withdrawTokens() public override onlyOwner saleEnded {
         require(
             token.transfer(owner(), token.balanceOf(address(this))),
             "Failed to send tokens"
         );
     }
 
-    function withdrawFuse() public override onlyOwner {
+    function withdrawFuse() public override onlyOwner saleEnded {
         (bool sent, ) = payable(owner()).call{value: address(this).balance}("");
         require(sent, "Failed to send FUSE");
     }
 
     function _purchase(address beneficiary) private {
         require(block.timestamp > startTime, "token sale has not started");
+        require(
+            block.timestamp < startTime + saleDuration,
+            "token sale has ended"
+        );
         require(msg.value > 0, "fuse amount should be greater than zero");
 
         uint256 tokenAmount = calculateTokenAmount(msg.value);
         require(tokenAmount > 0, "token amount should be greater than zero");
 
-        if (firstVestingDuration > 0 && secondVestingDuration > 0) {
+        if (firstVestingDurationInDays > 0 && secondVestingDurationInDays > 0) {
             uint256 unlockedAmount = tokenAmount.mul(unlockPercent).div(100);
             require(
                 unlockedAmount > 0,
@@ -127,17 +140,20 @@ contract TokenSale is Ownable, ITokenSale {
 
             uint256 lockedAmount = tokenAmount.sub(unlockedAmount);
 
+            token.approve(address(vestingVault), tokenAmount);
+
             _createVestingSchedule(
                 beneficiary,
                 unlockedAmount,
                 0,
-                firstVestingDuration
+                firstVestingDurationInDays
             );
+
             _createVestingSchedule(
                 beneficiary,
                 lockedAmount,
-                SECONDS_IN_MONTH,
-                secondVestingDuration
+                block.timestamp + (firstVestingDurationInDays * SECONDS_IN_DAY),
+                secondVestingDurationInDays
             );
         } else {
             require(token.transfer(beneficiary, tokenAmount), "no tokens");

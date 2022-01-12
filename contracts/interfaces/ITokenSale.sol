@@ -12,5 +12,5 @@ interface ITokenSale {
 
     function withdrawFuse() external;
 
-    function purchaseTokens(address purchaser) external;
+    function purchaseTokens(address purchaser) external payable;
 }

@@ -1,8 +1,10 @@
 {
   "name": "hardhat-project",
   "scripts": {
+    "compile": "hardhat compile",
     "test": "hardhat test",
-    "lint": "prettier --write 'contracts/**/*.sol'"
+    "lint": "prettier --write 'contracts/**/*.sol'",
+    "coverage": "hardhat coverage"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.4",
@@ -13,9 +15,14 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.3",
     "hardhat": "^2.8.2",
+    "openzeppelin-solidity": "~2.0.0",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "solhint": "^3.3.6",
-    "solhint-plugin-prettier": "0.0.5"
+    "solhint-plugin-prettier": "0.0.5",
+    "solidity-coverage": "^0.7.17"
+  },
+  "dependencies": {
+    "hardhat-gas-reporter": "^1.0.7"
   }
 }
