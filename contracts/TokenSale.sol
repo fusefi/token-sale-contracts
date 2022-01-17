@@ -40,11 +40,6 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         uint256 tokenAmount
     );
 
-    modifier saleEnded() {
-        require(block.timestamp > startTime + saleDuration, "sale is open");
-        _;
-    }
-
     constructor(
         IVestingVault _vestingVault,
         ERC20 _token,
@@ -102,14 +97,14 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         _purchase(beneficiary);
     }
 
-    function withdrawTokens() public override onlyOwner saleEnded {
+    function withdrawTokens() public override onlyOwner {
         require(
             token.transfer(owner(), token.balanceOf(address(this))),
             "Failed to send tokens"
         );
     }
 
-    function withdrawFuse() public override onlyOwner saleEnded {
+    function withdrawFuse() public override onlyOwner {
         (bool sent, ) = payable(owner()).call{value: address(this).balance}("");
         require(sent, "Failed to send FUSE");
     }
