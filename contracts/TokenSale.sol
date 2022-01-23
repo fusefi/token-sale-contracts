@@ -15,6 +15,8 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
 
     uint256 private constant SECONDS_IN_DAY = 86400;
 
+    uint256 public purchaseLimit = 3000 ether;
+
     IVestingVault public vestingVault;
 
     ERC20 public token;
@@ -32,6 +34,8 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
     uint256[] public firstVesting;
 
     uint256[] public secondVesting;
+    
+    mapping(address => uint256) public fuseBalances;
 
     event TokenPurchase(
         address indexed purchaser,
@@ -39,6 +43,8 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         uint256 fuseAmount,
         uint256 tokenAmount
     );
+
+    event PurchaseLimitChanged(uint256 oldPurchaseLimit, uint256 newPurchaseLimit);
 
     constructor(
         IVestingVault _vestingVault,
@@ -109,6 +115,13 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         require(sent, "Failed to send FUSE");
     }
 
+    function setPurchaseLimit(uint256 newPurchaseLimit) public override onlyOwner {
+        require(newPurchaseLimit > 0, "purchase limit should be greater than zero");
+        uint256 oldPurchaseLimit = purchaseLimit;
+        purchaseLimit = newPurchaseLimit;
+        emit PurchaseLimitChanged(oldPurchaseLimit, newPurchaseLimit);
+    }
+
     function _purchase(address beneficiary) private nonReentrant {
         require(block.timestamp > startTime, "token sale has not started");
         require(
@@ -129,6 +142,9 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         );
 
         availableTokensForSale = availableTokensForSale.sub(tokenAmount);
+
+        fuseBalances[msg.sender] = fuseBalances[msg.sender].add(msg.value);
+        require(fuseBalances[msg.sender] <= purchaseLimit, "sender has reached purchase limit");
 
         emit TokenPurchase(msg.sender, beneficiary, msg.value, tokenAmount);
     }

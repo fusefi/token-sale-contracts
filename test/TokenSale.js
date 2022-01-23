@@ -1,4 +1,5 @@
 const { expect } = require('chai')
+const { parseEther } = require('ethers/lib/utils')
 const { ethers } = require('hardhat')
 
 const { latest, advanceTimeAndBlock } = require('./utilities/time')
@@ -17,7 +18,7 @@ describe('TokenSale', () => {
     signers = await ethers.getSigners()
 
     const Token = await ethers.getContractFactory('ERC20Mock')
-    token = await Token.deploy('Token', 'T', '100000000')
+    token = await Token.deploy('Token', 'T', parseEther('1000000'))
     await token.deployed()
 
     const VestingVault = await ethers.getContractFactory('VestingVault12')
@@ -25,6 +26,51 @@ describe('TokenSale', () => {
     await vestingVault.deployed()
 
     TokenSale = await ethers.getContractFactory('TokenSale')
+  })
+
+  describe('setPurchaseLimit', () => {
+    let tokenSale
+    let purchaseAmount
+    let tokenPerWei
+    let firstVestingDurationInDays
+    let secondVestingDurationInDays
+
+    beforeEach(async () => {
+      const startTime = (await latest()) + 1 * SECONDS_IN_DAYS
+      const saleDuration = 2 * SECONDS_IN_DAYS
+
+      tokenPerWei = '200'
+      firstVestingDurationInDays = 30
+      secondVestingDurationInDays = 60
+      purchaseAmount = BigNumber.from(2)
+
+      tokenSale = await TokenSale.deploy(
+        vestingVault.address,
+        token.address,
+        [firstVestingDurationInDays, 10],
+        [secondVestingDurationInDays, 90],
+        startTime,
+        saleDuration,
+        tokenPerWei,
+        parseEther('1000000')
+      )
+
+      await vestingVault.changeMultiSig(tokenSale.address)
+
+      await token.transfer(tokenSale.address, parseEther('1000000'))
+    })
+
+    it('only owner can update purchase limit', async () => {
+      expect(await tokenSale.purchaseLimit()).to.be.eq(parseEther('3000'))
+
+      await expect(
+        tokenSale.connect(signers[1]).setPurchaseLimit(parseEther('5000'))
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      await tokenSale.setPurchaseLimit(parseEther('5000'))
+
+      expect(await tokenSale.purchaseLimit()).to.be.eq(parseEther('5000'))
+    })
   })
 
   describe('double vesting', () => {
@@ -51,12 +97,12 @@ describe('TokenSale', () => {
         startTime,
         saleDuration,
         tokenPerWei,
-        '1000000'
+        parseEther('1000000')
       )
 
       await vestingVault.changeMultiSig(tokenSale.address)
 
-      await token.transfer(tokenSale.address, '100000000')
+      await token.transfer(tokenSale.address, parseEther('1000000'))
     })
 
     it('can buy tokens by sending FUSE to contract', async () => {
@@ -195,6 +241,71 @@ describe('TokenSale', () => {
         }),
       ).to.be.revertedWith('token sale has ended')
     })
+
+    it('can not purchase more than purchase limit', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await expect(
+        tokenSale.purchaseTokens(signers[1].address, {
+          value: parseEther('3001'),
+        }),
+      ).to.be.revertedWith('sender has reached purchase limit')
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await expect(
+        tokenSale.purchaseTokens(signers[1].address, {
+          value: parseEther('1'),
+        }),
+      ).to.be.revertedWith('sender has reached purchase limit')
+    })
+
+    it('owner can withdraw FUSE from contract', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: purchaseAmount
+      })
+
+      expect(await ethers.provider.getBalance(tokenSale.address)).to.eq(purchaseAmount)
+
+      await expect(
+        tokenSale.connect(signers[1]).withdrawFuse()
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      await tokenSale.withdrawFuse()
+
+      expect(await ethers.provider.getBalance(tokenSale.address)).to.eq(0)
+    })
+
+    it('owner can withdraw Tokens from contract', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: purchaseAmount
+      })
+
+      expect(await token.balanceOf(tokenSale.address)).to.equal('999999999999999999999600')
+
+      await expect(
+        tokenSale.connect(signers[1]).withdrawTokens()
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      await tokenSale.withdrawTokens()
+
+      expect(await token.balanceOf(tokenSale.address)).to.eq(0)
+    })
+    
   })
 
   describe('single vesting', () => {
@@ -219,12 +330,12 @@ describe('TokenSale', () => {
         startTime,
         saleDuration,
         tokenPerWei,
-        '1000000'
+        parseEther('1000000')
       )
 
       await vestingVault.changeMultiSig(tokenSale.address)
 
-      await token.transfer(tokenSale.address, '100000000')
+      await token.transfer(tokenSale.address, parseEther('1000000'))
     })
 
     it('can buy tokens by sending FUSE to contract', async () => {
@@ -325,6 +436,70 @@ describe('TokenSale', () => {
           value: purchaseAmount,
         }),
       ).to.be.revertedWith('token sale has ended')
+    })
+
+    it('can not purchase more than purchase limit', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await expect(
+        tokenSale.purchaseTokens(signers[1].address, {
+          value: parseEther('3001'),
+        }),
+      ).to.be.revertedWith('sender has reached purchase limit')
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: parseEther('1000'),
+      })
+
+      await expect(
+        tokenSale.purchaseTokens(signers[1].address, {
+          value: parseEther('1'),
+        }),
+      ).to.be.revertedWith('sender has reached purchase limit')
+    })
+
+    it('owner can withdraw FUSE from contract', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: purchaseAmount
+      })
+
+      expect(await ethers.provider.getBalance(tokenSale.address)).to.eq(purchaseAmount)
+
+      await expect(
+        tokenSale.connect(signers[1]).withdrawFuse()
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      await tokenSale.withdrawFuse()
+
+      expect(await ethers.provider.getBalance(tokenSale.address)).to.eq(0)
+    })
+
+    it('owner can withdraw Tokens from contract', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await tokenSale.purchaseTokens(signers[1].address, {
+        value: purchaseAmount
+      })
+
+      expect(await token.balanceOf(tokenSale.address)).to.equal('999999999999999999999600')
+
+      await expect(
+        tokenSale.connect(signers[1]).withdrawTokens()
+      ).to.be.revertedWith('Ownable: caller is not the owner')
+
+      await tokenSale.withdrawTokens()
+
+      expect(await token.balanceOf(tokenSale.address)).to.eq(0)
     })
   })
 })
