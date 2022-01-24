@@ -15,8 +15,6 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
 
     uint256 private constant SECONDS_IN_DAY = 86400;
 
-    uint256 public purchaseLimit = 3000 ether;
-
     IVestingVault public vestingVault;
 
     ERC20 public token;
@@ -34,12 +32,13 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
     uint256[] public firstVesting;
 
     uint256[] public secondVesting;
+
+    uint256 public purchaseLimit;
     
     mapping(address => uint256) public fuseBalances;
 
     event TokenPurchase(
         address indexed purchaser,
-        address indexed beneficiary,
         uint256 fuseAmount,
         uint256 tokenAmount
     );
@@ -54,7 +53,8 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         uint256 _startTime,
         uint256 _saleDuration,
         uint256 _tokenPerWei,
-        uint256 _tokensForSale
+        uint256 _tokensForSale,
+        uint256 _purchaseLimit
     ) {
         require(
             address(_vestingVault) != address(0),
@@ -74,6 +74,7 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
             "tokens for sale should be greater than zero"
         );
         require(_firstVesting[1] + _secondVesting[1] == 100, "vesting total should be 100 percent");
+        require(_purchaseLimit > 0, "purchase limit should be greater than zero");
 
         vestingVault = _vestingVault;
         token = _token;
@@ -84,10 +85,11 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         tokenPerWei = _tokenPerWei;
         totalTokensForSale = _tokensForSale;
         availableTokensForSale = _tokensForSale;
+        purchaseLimit = _purchaseLimit;
     }
 
     receive() external payable {
-        _purchase(msg.sender);
+        _purchase();
     }
 
     function calculateTokenAmount(uint256 fuseAmount)
@@ -99,8 +101,8 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         return fuseAmount.mul(tokenPerWei);
     }
 
-    function purchaseTokens(address beneficiary) public payable override {
-        _purchase(beneficiary);
+    function purchaseTokens() public payable override {
+        _purchase();
     }
 
     function withdrawTokens() public override onlyOwner {
@@ -122,7 +124,7 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         emit PurchaseLimitChanged(oldPurchaseLimit, newPurchaseLimit);
     }
 
-    function _purchase(address beneficiary) private nonReentrant {
+    function _purchase() private nonReentrant {
         require(block.timestamp > startTime, "token sale has not started");
         require(
             block.timestamp < startTime + saleDuration,
@@ -132,10 +134,10 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
 
         uint256 tokenAmount = calculateTokenAmount(msg.value);
 
-        _createVesting(beneficiary, tokenAmount, 0, firstVesting);
+        _createVesting(msg.sender, tokenAmount, 0, firstVesting);
 
         _createVesting(
-            beneficiary,
+            msg.sender,
             tokenAmount,
             block.timestamp + (firstVesting[0] * SECONDS_IN_DAY),
             secondVesting
@@ -146,7 +148,7 @@ contract TokenSale is Ownable, ReentrancyGuard, ITokenSale {
         fuseBalances[msg.sender] = fuseBalances[msg.sender].add(msg.value);
         require(fuseBalances[msg.sender] <= purchaseLimit, "sender has reached purchase limit");
 
-        emit TokenPurchase(msg.sender, beneficiary, msg.value, tokenAmount);
+        emit TokenPurchase(msg.sender, msg.value, tokenAmount);
     }
 
     function _createVesting(

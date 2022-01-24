@@ -12,7 +12,7 @@ interface ITokenSale {
 
     function withdrawFuse() external;
 
-    function purchaseTokens(address purchaser) external payable;
+    function purchaseTokens() external payable;
 
     function setPurchaseLimit(uint256 newPurchaseLimit) external;
 }

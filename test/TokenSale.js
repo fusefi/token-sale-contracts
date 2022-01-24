@@ -52,7 +52,8 @@ describe('TokenSale', () => {
         startTime,
         saleDuration,
         tokenPerWei,
-        parseEther('1000000')
+        parseEther('1000000'),
+        parseEther('3000')
       )
 
       await vestingVault.changeMultiSig(tokenSale.address)
@@ -97,7 +98,8 @@ describe('TokenSale', () => {
         startTime,
         saleDuration,
         tokenPerWei,
-        parseEther('1000000')
+        parseEther('1000000'),
+        parseEther('3000')
       )
 
       await vestingVault.changeMultiSig(tokenSale.address)
@@ -108,12 +110,12 @@ describe('TokenSale', () => {
     it('can buy tokens by sending FUSE to contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await signers[1].sendTransaction({
+      await signers[0].sendTransaction({
         to: tokenSale.address,
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
       expect(vestings[0]).to.be.equal(0)
       expect(vestings[1]).to.be.equal(1)
     })
@@ -121,11 +123,11 @@ describe('TokenSale', () => {
     it('can buy tokens by calling #purchaseTokens', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
       expect(vestings[0]).to.be.equal(0)
       expect(vestings[1]).to.be.equal(1)
     })
@@ -133,11 +135,11 @@ describe('TokenSale', () => {
     it('sets correct vesting amounts based on percent', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens( {
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       const firstVesting = await vestingVault.tokenGrants(vestings[0])
       expect(firstVesting.amount).to.be.eq(40) // 40
@@ -149,11 +151,11 @@ describe('TokenSale', () => {
     it('sets correct vesting times', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       const latestTimestamp = await latest()
 
@@ -175,96 +177,104 @@ describe('TokenSale', () => {
     it('can fully claim their vesting for both schedules', async () => {
       await advanceTimeAndBlock(SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
       // 400
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       // day 1
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('1')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('1')
 
       // day 2
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('2')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('2')
 
       // ... day 30 first vesting done
 
       await advanceTimeAndBlock(28 * SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('40')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('40')
 
       // day 31
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[1])
+      await vestingVault.claimVestedTokens(vestings[1])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('46')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('46')
 
       // day 32
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[1])
+      await vestingVault.claimVestedTokens(vestings[1])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('52')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('52')
 
       // ... day 90 second vesting done
 
       await advanceTimeAndBlock(58 * SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[1])
+      await vestingVault.claimVestedTokens(vestings[1])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('400')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('400')
     })
 
     it('can not purchase after sale has ended', async () => {
       await advanceTimeAndBlock(3 * SECONDS_IN_DAYS)
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: purchaseAmount,
         }),
       ).to.be.revertedWith('token sale has ended')
+    })
+
+    it('can purchase amount equal to purchase limit', async () => {
+      await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
+
+      await tokenSale.purchaseTokens({
+        value: parseEther('3000'),
+      })
     })
 
     it('can not purchase more than purchase limit', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: parseEther('3001'),
         }),
       ).to.be.revertedWith('sender has reached purchase limit')
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: parseEther('1'),
         }),
       ).to.be.revertedWith('sender has reached purchase limit')
@@ -273,7 +283,7 @@ describe('TokenSale', () => {
     it('owner can withdraw FUSE from contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount
       })
 
@@ -291,7 +301,7 @@ describe('TokenSale', () => {
     it('owner can withdraw Tokens from contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount
       })
 
@@ -330,7 +340,8 @@ describe('TokenSale', () => {
         startTime,
         saleDuration,
         tokenPerWei,
-        parseEther('1000000')
+        parseEther('1000000'),
+        parseEther('3000')
       )
 
       await vestingVault.changeMultiSig(tokenSale.address)
@@ -341,34 +352,34 @@ describe('TokenSale', () => {
     it('can buy tokens by sending FUSE to contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await signers[1].sendTransaction({
+      await signers[0].sendTransaction({
         to: tokenSale.address,
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
       expect(vestings[0]).to.be.equal(0)
     })
 
     it('can buy tokens by calling #purchaseTokens', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
       expect(vestings[0]).to.be.equal(0)
     })
 
     it('sets correct vesting amounts based on percent', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       const firstVesting = await vestingVault.tokenGrants(vestings[0])
       expect(firstVesting.amount).to.be.eq(400) // 400
@@ -377,11 +388,11 @@ describe('TokenSale', () => {
     it('sets correct vesting times', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       const latestTimestamp = await latest()
 
@@ -395,44 +406,44 @@ describe('TokenSale', () => {
     it('can fully claim their vesting for both schedules', async () => {
       await advanceTimeAndBlock(SECONDS_IN_DAYS + 1)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount,
       })
 
       // 400
 
-      const vestings = await vestingVault.getActiveGrants(signers[1].address)
+      const vestings = await vestingVault.getActiveGrants(signers[0].address)
 
       // day 1
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('13')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('13')
 
       // day 2
 
       await advanceTimeAndBlock(SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('26')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('26')
 
       // ... day 30 first vesting done
 
       await advanceTimeAndBlock(28 * SECONDS_IN_DAYS)
 
-      await vestingVault.connect(signers[1]).claimVestedTokens(vestings[0])
+      await vestingVault.claimVestedTokens(vestings[0])
 
-      expect(await token.balanceOf(signers[1].address)).to.be.eq('400')
+      expect(await token.balanceOf(signers[0].address)).to.be.eq('400')
     })
 
     it('can not purchase after sale has ended', async () => {
       await advanceTimeAndBlock(3 * SECONDS_IN_DAYS)
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: purchaseAmount,
         }),
       ).to.be.revertedWith('token sale has ended')
@@ -442,25 +453,25 @@ describe('TokenSale', () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: parseEther('3001'),
         }),
       ).to.be.revertedWith('sender has reached purchase limit')
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: parseEther('1000'),
       })
 
       await expect(
-        tokenSale.purchaseTokens(signers[1].address, {
+        tokenSale.purchaseTokens({
           value: parseEther('1'),
         }),
       ).to.be.revertedWith('sender has reached purchase limit')
@@ -469,7 +480,7 @@ describe('TokenSale', () => {
     it('owner can withdraw FUSE from contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount
       })
 
@@ -487,7 +498,7 @@ describe('TokenSale', () => {
     it('owner can withdraw Tokens from contract', async () => {
       await advanceTimeAndBlock(1 * SECONDS_IN_DAYS)
 
-      await tokenSale.purchaseTokens(signers[1].address, {
+      await tokenSale.purchaseTokens({
         value: purchaseAmount
       })
 
