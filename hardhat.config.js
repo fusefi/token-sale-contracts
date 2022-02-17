@@ -1,6 +1,9 @@
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter")
 require("solidity-coverage")
+require("./tasks")
+
+const PRIVATE_KEY = "82f410bd505d035217018da34250400669d2f8ce390504f5d5e4edc772f4c6f3"
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -19,6 +22,12 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
+  networks: {
+    fuse: {
+      url: 'https://rpc.fuse.io',
+      accounts: [PRIVATE_KEY]
+    }
+  },
   solidity: {
     compilers: [
       {

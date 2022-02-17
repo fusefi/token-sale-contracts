@@ -1,13 +1,13 @@
 {
-  "name": "hardhat-project",
+  "name": "token-sale-contracts",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
     "lint": "prettier --write 'contracts/**/*.sol'",
     "coverage": "hardhat coverage",
     "flatten": "hardhat flatten",
-    "ui:view": "solui view --spec solui/tokenSale.json --artifacts build",
-    "ui:build": "solui publish-folder --spec solui/tokenSale.json --artifacts build --folder build/ui"
+    "ui:view": "solui view --spec solui/vesting.json --artifacts build",
+    "ui:build": "solui publish-folder --spec solui/vesting.json --artifacts build --folder build/ui"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.4",

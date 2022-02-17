@@ -1,0 +1,458 @@
+{
+  "version": 1,
+  "production": true,
+  "constants": {
+    "vestingOne": {
+      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+    },
+    "vestingTwo": {
+      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+    },
+    "vestingThree": {
+      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+    },
+    "vestingFour": {
+      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+    }
+  },
+  "id": "token-sale-contracts",
+  "title": "TokenSwap",
+  "description": "Claim volt tokens under the price you purchased at",
+  "aboutUrl": "https://github.com/fusefi/token-swap-contracts",
+  "image": {
+    "url": "https://upload.wikimedia.org/wikipedia/commons/9/98/Solidity_logo.svg"
+  },
+  "panels": [
+    {
+      "id": "getActiveGrantsSwapOne",
+      "title": "Grants(Price: $0.002)",
+      "description": "Get your active grants",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "recipient",
+          "title": "your address",
+          "type": "address"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingOne]",
+          "method": "getActiveGrants",
+          "args": {
+            "_recipient": "@input[recipient]"
+          },
+          "saveResultAsInput": "activeGrants"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "your grant ids",
+          "help": "Amount of tokens can be claimed",
+          "type": "int[]",
+          "value": "@input[activeGrants]"
+        }
+      ]
+    },
+    {
+      "id": "calculateGrantClaim",
+      "title": "Calculate grant vested tokens(Price: $0.002)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingOne]",
+          "method": "calculateGrantClaim",
+          "args": {
+            "_grantId": "@input[grantId]"
+          },
+          "saveResultAsInput": "grant"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "Amount of vested tokens can be claimed",
+          "help": "Amount of tokens can be claimed",
+          "type": "int",
+          "transform": [
+            {
+              "type": "intToScaledIntString",
+              "scale": "-18"
+            }
+          ],
+          "value": "@input[grant][1]"
+        },
+        {
+          "title": "Days of the vested tokens",
+          "type": "int",
+          "value": "@input[grant][0]"
+        }
+      ]
+    },
+    {
+      "id": "claim",
+      "title": "Claim vested tokens(Price: $0.002)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "send",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingOne]",
+          "method": "claimVestedTokens",
+          "args": {
+            "_grantId": "@input[grantId]"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "getActiveGrantsSwapTwo",
+      "title": "Grants(Price: $0.0025)",
+      "description": "Get your active grants",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "recipient",
+          "title": "your address",
+          "type": "address"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingTwo]",
+          "method": "getActiveGrants",
+          "args": {
+            "_recipient": "@input[recipient]"
+          },
+          "saveResultAsInput": "activeGrants"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "your grant ids",
+          "help": "Amount of tokens can be claimed",
+          "type": "int[]",
+          "value": "@input[activeGrants]"
+        }
+      ]
+    },
+    {
+      "id": "calculateGrantClaimTwo",
+      "title": "Calculate grant vested tokens(Price: $0.0025)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingTwo]",
+          "method": "calculateGrantClaim",
+          "args": {
+            "_grantId": "@input[grantId]"
+          },
+          "saveResultAsInput": "grant"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "Amount of vested tokens can be claimed",
+          "help": "Amount of tokens can be claimed",
+          "type": "int",
+          "transform": [
+            {
+              "type": "intToScaledIntString",
+              "scale": "-18"
+            }
+          ],
+          "value": "@input[grant][1]"
+        },
+        {
+          "title": "Days of the vested tokens",
+          "type": "int",
+          "value": "@input[grant][0]"
+        }
+      ]
+    },
+    {
+      "id": "claimTwo",
+      "title": "Claim vested tokens(Price: $0.0025)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "send",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingTwo]",
+          "method": "claimVestedTokens",
+          "args": {
+            "_grantId": "@input[grantId]"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "getActiveGrantsThree",
+      "title": "Grants(Price: $0.003)",
+      "description": "Get your active grants",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "recipient",
+          "title": "your address",
+          "type": "address"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingThree]",
+          "method": "getActiveGrants",
+          "args": {
+            "_recipient": "@input[recipient]"
+          },
+          "saveResultAsInput": "activeGrants"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "your grant ids",
+          "help": "Amount of tokens can be claimed",
+          "type": "int[]",
+          "value": "@input[activeGrants]"
+        }
+      ]
+    },
+    {
+      "id": "calculateGrantClaimThree",
+      "title": "Calculate grant vested tokens(Price: $0.003)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingThree]",
+          "method": "calculateGrantClaim",
+          "args": {
+            "_grantId": "@input[grantId]"
+          },
+          "saveResultAsInput": "grant"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "Amount of vested tokens can be claimed",
+          "help": "Amount of tokens can be claimed",
+          "type": "int",
+          "transform": [
+            {
+              "type": "intToScaledIntString",
+              "scale": "-18"
+            }
+          ],
+          "value": "@input[grant][1]"
+        },
+        {
+          "title": "Days of the vested tokens",
+          "type": "int",
+          "value": "@input[grant][0]"
+        }
+      ]
+    },
+    {
+      "id": "claimThree",
+      "title": "Claim vested tokens(Price: $0.003)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "send",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingThree]",
+          "method": "claimVestedTokens",
+          "args": {
+            "_grantId": "@input[grantId]"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "getActiveGrantsFour",
+      "title": "Grants(Price: $0.0035)",
+      "description": "Get your active grants",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "recipient",
+          "title": "your address",
+          "type": "address"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingFour]",
+          "method": "getActiveGrants",
+          "args": {
+            "_recipient": "@input[recipient]"
+          },
+          "saveResultAsInput": "activeGrants"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "your grant ids",
+          "help": "Amount of tokens can be claimed",
+          "type": "int[]",
+          "value": "@input[activeGrants]"
+        }
+      ]
+    },
+    {
+      "id": "calculateGrantClaimFour",
+      "title": "Calculate grant vested tokens(Price: $0.0035)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "call",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingFour]",
+          "method": "calculateGrantClaim",
+          "args": {
+            "_grantId": "@input[grantId]"
+          },
+          "saveResultAsInput": "grant"
+        }
+      ],
+      "outputs": [
+        {
+          "title": "Amount of vested tokens can be claimed",
+          "help": "Amount of tokens can be claimed",
+          "type": "int",
+          "transform": [
+            {
+              "type": "intToScaledIntString",
+              "scale": "-18"
+            }
+          ],
+          "value": "@input[grant][1]"
+        },
+        {
+          "title": "Days of the vested tokens",
+          "type": "int",
+          "value": "@input[grant][0]"
+        }
+      ]
+    },
+    {
+      "id": "claimFour",
+      "title": "Claim vested tokens(Price: $0.0035)",
+      "description": "Claim your volt vested tokens",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/8/89/Google-Cloud-Functions.svg"
+      },
+      "inputs": [
+        {
+          "name": "grantId",
+          "title": "Grant id",
+          "type": "int"
+        }
+      ],
+      "execs": [
+        {
+          "type": "send",
+          "contract": "VestingVault12",
+          "address": "@constant[vestingFour]",
+          "method": "claimVestedTokens",
+          "args": {
+            "_grantId": "@input[grantId]"
+          }
+        }
+      ]
+    }
+  ]
+}

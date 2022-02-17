@@ -7,3 +7,8 @@ typechain
 #Hardhat files
 cache
 artifacts
+flats
+scripts
+
+# ui
+build/ui
