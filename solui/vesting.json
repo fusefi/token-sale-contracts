@@ -3,16 +3,16 @@
   "production": true,
   "constants": {
     "vestingOne": {
-      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+      "default": "0x5474392bAFbE924ed908Fb27FE4d790D5467db9d"
     },
     "vestingTwo": {
-      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+      "default": "0xB2657787A5096c1cf05a29Bb4aC42f008A4774F5"
     },
     "vestingThree": {
-      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+      "default": "0xD11c412cD0473B09d5fFEC3cC8c9D980771549a0"
     },
     "vestingFour": {
-      "default": "0xA721F19Cbf273460Fb46Dbdac0eE3bF236e51e78"
+      "default": "0x11CB6189f14A2CB4e27045F831A64331404C08Bd"
     }
   },
   "id": "token-sale-contracts",
