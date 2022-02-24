@@ -487,6 +487,41 @@ contract VestingVault12 {
         emit GrantTokensClaimed(tokenGrant.recipient, amountVested);
     }
 
+    /// @notice Allows a grant recipient to claim their vested tokens in Bulk. Does not revert if one grantId is invalid
+    /// It is advised recipients check they are entitled to claims via `calculateGrantClaim` before calling this
+    /// Recipients can check the GrantTokensClaimed events to see which grant ids went through
+    function claimManyVestedTokens(uint256[] _grantIds) external
+    {
+        for(uint256 i=0 ; i<_grantIds.length ; i++){
+            uint256 _grantId = _grantIds[i];
+            uint16 daysVested;
+            uint256 amountVested;
+            (daysVested, amountVested) = calculateGrantClaim(_grantId);
+            
+            // require(amountVested > 0, "amountVested is 0");
+            if(
+               !(tokenGrants[_grantId].recipient == msg.sender) || // check the onlyGrantRecipient(_grantId) modifier
+               !(amountVested > 0) || 
+               token.balanceOf(address(this)) < amountVested
+            ){
+                continue;
+            }
+
+            Grant storage tokenGrant = tokenGrants[_grantId];
+            tokenGrant.daysClaimed = uint16(tokenGrant.daysClaimed.add(daysVested));
+            tokenGrant.totalClaimed = uint256(
+                tokenGrant.totalClaimed.add(amountVested)
+            );
+            // require(
+            //     token.transfer(tokenGrant.recipient, amountVested),
+            //     "no tokens"
+            // );
+            token.transfer(tokenGrant.recipient, amountVested);
+            emit GrantTokensClaimed(tokenGrant.recipient, amountVested);
+        }
+    }
+
+
     /// @notice Terminate token grant transferring all vested tokens to the `_grantId`
     /// and returning all non-vested tokens to the V12 MultiSig
     /// Secured to the V12 MultiSig only
